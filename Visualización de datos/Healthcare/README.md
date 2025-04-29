@@ -1,4 +1,5 @@
 # Healthcare Dataset
+## Realizado en Power BI
 
 En este proyecto se presenta una visualización exploratoria del dataset de ingresos hospitalarios. El conjunto de datos recoge mediciones de género, tipo de sangre, condición médica, costes del ingreso, seguro, tipo de ingreso, fecha de ingreso y duración de la estancia.
 

@@ -1,0 +1,632 @@
+---
+title: "Carlos Moreno Nuñez"
+author: "Data Analyst"
+date: "2025-04-25"
+output: html_document
+---
+
+## Biomarcadores urinarios para la detección de cáncer de páncreas{.tabset} 
+### Descripción
+
+```{r include=FALSE}
+# Cargamos las librerias
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(patchwork)
+library(psych)
+library(knitr)
+library(tidyverse)
+library(caret)   
+library(randomForest)
+library(kableExtra)
+library(ggthemes)
+library(paletteer)
+```
+
+```{r include=FALSE}
+# Cargamos los datos
+data = as.data.table(read.csv("Debernardi et al 2020 data.csv"))
+data[, diagnosis := fifelse(diagnosis == 1, "Control",
+                       fifelse(diagnosis == 2, "Benign sample",
+                       fifelse(diagnosis == 3, "Cancer", NA_character_)))]
+```
+
+El cáncer de páncreas es un tipo de cáncer extremadamente mortal. Una vez diagnosticado, la tasa de supervivencia a cinco años es inferior al 10%. Sin embargo, si el cáncer de páncreas se detecta a tiempo, las probabilidades de supervivencia son mucho mejores. Desafortunadamente, muchos casos de cáncer de páncreas no presentan síntomas hasta que el cáncer se ha diseminado por todo el cuerpo. Una prueba diagnóstica para identificar a las personas con cáncer de páncreas podría ser enormemente útil.
+
+En un artículo del equipo de Silvana Debernardiun buscó desarrollar una prueba diagnóstica precisa para el tipo más común de cáncer de páncreas, llamado adenocarcinoma ductal pancreático o PDAC. Reunieron una serie de biomarcadores a partir de la orina de tres grupos de pacientes.
+
+En el conjunto de datos encontramos las siguientes variables:
+
+- sample_id
+- patient_cohort: 
+    - Cohor1: Muestras utilizadas en otros proyectos
+    - Cohort2: Muestras nuevas
+- sample_origin: 
+    - BPTB: Banco de Tejidos de Páncreas de Barts 
+    - ESP: Centro Nacional de Investigaciones Oncológicas
+    - LIV: Universidad de Liverpool
+    - UCL: University College London
+- age
+- sex
+- diagnosis: 
+    - 1: Control
+    - 2: Enfermedades benignas de páncreas
+    - 3: Cáncer de páncreas
+- stage
+- benign_sample_diagnosis
+- plasma_CA19_9
+- creatinine
+- LYVE1
+- REG1B
+- TFF1
+- REG1A
+
+### Objetivo
+En este proyecto se realiza un análisis de los datos que relacionan biomarcadores en la orina con el cancer de páncreas. Para ello se realizarán los siguientes estudios:
+
+- Estudio de las muestras
+  - Fecha
+  - Origen
+  
+- Estudio de pacientes con cancer
+  - Edad
+  - Género
+  - Diagnóstico
+  
+- Estudio de los pacientes con muestras benignas
+  - Diagnóstico
+  
+- Estudio de los pacientes con cáncer
+  - Estado del cancer
+
+- Biomarcadores
+  - Resumen creatinina
+  - Resumen LYVE1
+  - Resumen REG1B
+  - Resumen TFF1
+  - Resumen REG1A
+  
+### Estudio de las muestras
+Los datos de este informe provienen de una investigación llevada a cabo por el equipo de investigación dirigido por Silvana Debernardiun.
+En esta sección vamos a hacer una rápida visualización de características básicas de las muestras, comprobando así si se trata de una muestra representativa.
+
+En primer lugar, podemos diferenciar dos tipos de muestras, aquellas que ya han sido utilizadas previamente en otros estudios y muestras tomadas especificamente para el estudio.
+```{r echo=FALSE}
+# Representación muestras~origen
+cohort_recuento = data[,(colN = .N), by = patient_cohort]
+
+ggplot(cohort_recuento, aes(x = patient_cohort, y = V1)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = V1), vjust = -0.5, color = "black", size = 3.5) +
+  labs (title = "Clasificación de las muestras por la fecha de origen",
+    x = "Fecha de muestra", y = "Total") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+Podemos observar que aunque las muestras ya utilizadas (cohort1) en otros proyectos son mayoritarias, en este estudio se han obtenido una gran cantidad de muestras nuevas (Cohort2), aumentando así la población de estudio.
+
+Con respecto al origen de las muestras, estas provienen de cuatro centros de investigación de Gran Bretaña y España.
+```{r echo=FALSE}
+origen_recuento = data[,.(colN = .N), by = sample_origin]
+
+ggplot(origen_recuento, aes(x = sample_origin, y = colN)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) + 
+  labs (title = "Clasificación de las muestras por lugar de origen",
+    x = "Origen de muestra", y = "Total") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Podemos observar que a pesar de tener 4 posibles origenes, aquellas procedentes del Banco de Tejidos de Páncreas de Barts son mayoritarias, siendo las originarias del Centro Nacional de Investigaciones Oncológicas y del University College London poco representativas para hacer un análisis en función de esta clasificación.
+
+
+### Estudio de pacientes de estudio
+Una vez conocida las características de las muestras, es importante hacer un estudio preliminar de los sujetos de estudio.
+
+Es importante conocer la distribución de edad de los sujetos, comprobando que todos los grupos de edad están representados en el estudio.
+```{r echo=FALSE}
+data$edadgrupo = cut(data$age,
+                     breaks = c(0, 20, 30, 40, 50, 60, 70, 80, Inf),
+                     labels = c("0-20", "21-30", "31-40", "41-50", "51-60", "61-70","71-80", "80+"),
+                     right = TRUE)
+edad_recuento = data[, .(colN = .N), by = edadgrupo]
+
+ggplot(edad_recuento, aes(x = edadgrupo, y = colN)) + 
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Clasificación de los participantes por edad",
+    x = "Grupo de edad", y = "Total") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r echo=FALSE}
+summary(data$age)
+```
+
+Podemos observar que existe representación de todos los grupos de edad, siendo los mayoritarios los sujetos que comprenden entre 50 y 60 años y entre 60 y 70 años, estos datos son esperables ya que son en estos grupos donde esperaremos mayor incidencia de cáncer.
+
+Una segunda comprobación importante es que no exista sesgo por edad.
+```{r echo=FALSE}
+genero_recuento = data[,. (colN = .N), by = sex]
+
+ggplot(genero_recuento, aes(x = sex, y = colN)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Clasificación de los participantes por género",
+    x = "Género", y = "Total") + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+Podemos afirmar que existe homogeneidad en función del género, siendo por tanto un grupo representativo en este aspecto.
+Quedando comprobado que estamos tratando con un grupo representativo, vamos a estudiar la distribución de diagnósticos dentro del grupo.
+```{r echo=FALSE}
+diagnostico_recuento = data[,.(colN = .N), by = diagnosis]
+
+ggplot(diagnostico_recuento, aes(x = diagnosis, y = colN)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Clasificación de los participantes por el diagnóstico",
+       x = "Diagnóstico", y = "Total") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+```{r echo=FALSE}
+ggplot(data, aes(x = diagnosis, fill = edadgrupo)) +
+  geom_bar(position = "dodge") + 
+  labs(title = "Clasificación de los participantes por el diagnóstico y edad",
+       x = "Diagnóstico", y = "Total") +
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 7)) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+```{r echo=FALSE}
+ggplot(data, aes(x = diagnosis, fill = sex)) +
+  geom_bar(position = "dodge") + 
+  labs(title = "Clasificación de los participantes por el diagnóstico y género",
+       x = "Diagnóstico", y = "Total") +
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 7)) +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+```
+
+A pesar de que los pacientes mayoritarios son aquellos con enfermedades benignas, podemos observar que existe una representación correcta de cada uno de los grupos, permitiendo extraer conclusiones representativas a partir de este estudio.
+
+Con respecto a la distribución en comparación con el control, podemos observar que tanto el cáncer como el resto de las patologías son mayoritarias en hombres, Con respecto a la edad observamos que existe tendencia de cáncer en los grupos de 61-70 y 71-80 años.
+Por otro lado los casos de enfermedades benignas son más abundantes en el grupo de 31-40 años.
+
+Una vez conocidos los recuentos de diagnósticos, procedemos a estudiar los casos enfermedades benignas y cáncer de colon.
+```{r echo=FALSE}
+pancreatitis_recuento = data[,.(colN = .N), by = benign_sample_diagnosis]
+
+pancreatitis_recuento = pancreatitis_recuento[benign_sample_diagnosis != ""]
+
+pancreatitis_recuento[, benign_sample_diagnosis := ifelse(colN < 5, "Otros", as.character(benign_sample_diagnosis))]
+
+pancreatitis_recuento = pancreatitis_recuento %>%
+  mutate(benign_sample_diagnosis = ifelse(benign_sample_diagnosis == "Otros", 
+                                         "Otros", 
+                                         benign_sample_diagnosis)) %>%
+  group_by(benign_sample_diagnosis) %>%
+  summarise(colN = sum(colN))
+
+ggplot(pancreatitis_recuento, aes(x = benign_sample_diagnosis, y = colN)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Clasificación de diagnóstico de los pacientes con pancreatitis",
+       x = "Diagnóstico", y = "Total") +
+   scale_y_continuous(limits = c(0, 80)) +
+  theme(plot.title = element_text(hjust = 0.5,), axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r echo=FALSE}
+cancer_recuento = data[,.(colN = .N), by = stage]
+cancer_recuento = cancer_recuento[stage != ""]
+
+ggplot(cancer_recuento, aes(x = stage, y = colN)) +
+  geom_bar(stat = "identity", fill = "#73A4CA") +
+  geom_text(aes(label = colN), vjust = -0.5, color = "black", size = 3.5) +
+  labs(title = "Clasificación de los participantes por el diagnóstico",
+       x = "Diagnóstico", y = "Total") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+En el caso de las enfermedades benignas podemos destacar que la más habitual es la pancreatitis, mientras que en los casos de cáncer, lo más común es encontrarlos en estado III y IIB.
+
+### Estudio de los biomarcadores
+Los biomarcadores metabólicos han surgido como herramientas fundamentales en el diagnóstico temprano, pronóstico y seguimiento de diversas enfermedades. A diferencia de los enfoques tradicionales, que a menudo detectan la enfermedad cuando ya está avanzada, el estudio de estos biomarcadores permite identificar alteraciones mucho antes de que aparezcan síntomas clínicos o cambios anatómicos evidentes.
+Esto permite establecer modelos predictivos y tratamientos en etapas tempranas de la enfarmedad favoreciento la recuperación de los pacientes.
+
+En relación al cáncer de color, en el presente estudio se destacan como biomarcadores:
+- Plasma CA19_9
+- Creatinina
+- LYVE1
+- REG1B
+- TFF1
+- REG1A
+A continuación se realizará un análisis de las concentraciones de estos biomarcadores en orina en función del estado del sujeto para comprobar si existen diferencias significativas entre los diferentes grupos.
+
+```{r echo=FALSE, warning=FALSE}
+q3_plasma = quantile(data$plasma_CA19_9, 0.75, na.rm = TRUE)
+lim_plasma = round(2 * q3_plasma, 0) 
+plasma = ggplot(data, aes(x = diagnosis, y = plasma_CA19_9, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_plasma)) +
+  labs(title = paste("Concentración de plasma"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+q3_creatinine = quantile(data$creatinine, 0.75, na.rm = TRUE)
+lim_creatinine = round(2 * q3_creatinine, 0) 
+creatinine = ggplot(data, aes(x = diagnosis, y = creatinine, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_creatinine)) +
+  labs(title = paste("Concentración de creatinina"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+q3_LYVE1 = quantile(data$LYVE1, 0.75, na.rm = TRUE)
+lim_LYVE1 = round(2 * q3_LYVE1, 0) 
+LYVE1 = ggplot(data, aes(x = diagnosis, y = LYVE1, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_LYVE1)) +
+  labs(title = paste("Concentración de LYVE1"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+q3_REG1B = quantile(data$REG1B, 0.75, na.rm = TRUE)
+lim_REG1B = round(2 * q3_REG1B, 0) 
+REG1B = ggplot(data, aes(x = diagnosis, y = REG1B, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_REG1B)) +
+  labs(title = paste("Concentración de REG1B"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+q3_TFF1 = quantile(data$TFF1, 0.75, na.rm = TRUE)
+lim_TFF1 = round(2 * q3_TFF1, 0) 
+TFF1 = ggplot(data, aes(x = diagnosis, y = TFF1, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_TFF1)) +
+  labs(title = paste("Concentración de TFF1"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+q3_REG1A = quantile(data$REG1A, 0.75, na.rm = TRUE)
+lim_REG1A = round(2 * q3_REG1A, 0) 
+REG1A = ggplot(data, aes(x = diagnosis, y = REG1A, fill = diagnosis)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = paletteer_c("ggthemes::Blue", 3)) +
+  scale_y_continuous(limits = c(NA, lim_REG1A)) +
+  labs(title = paste("Concentración de REG1A"), 
+       x = "Diagnóstico", 
+       y = "Concentración") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+plasma + creatinine + LYVE1 + 
+  REG1B + TFF1 + REG1A + 
+   plot_layout(ncol = 3, nrow = 2, guides = "collect", axis_titles = "collect") &
+  theme(legend.position = "bottom")
+
+```
+
+#### Plasma CA19_9
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_plasma = describeBy(data$plasma_CA19_9, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_plasma[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+H0: La concentración de PlasmaCA19_9 es igual independientemente del diagnóstico.
+
+H1: La concentración de PlasmaCA19_9 difiere en función del diagnóstico.
+
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results_plasma = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(plasma_CA19_9)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(plasma_CA19_9)$p.value < 0.05, "< 0.05", round(shapiro.test(plasma_CA19_9)$p.value, 3))
+  )
+kable(shapiro_results_plasma, align = c("l", "c", "c"))
+```
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+
+```{r echo=FALSE}
+kruskal_result_plasma = kruskal.test(plasma_CA19_9 ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result_plasma$statistic,
+  ifelse(kruskal_result_plasma$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))
+))
+```
+
+Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de Plasma CA19.9 en orina en función del diagnóstico. 
+Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
+
+#### Creatinina
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_creatinina = describeBy(data$creatinine, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_creatinina[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+
+H0: La concentración de Creatinina es igual independientemente del diagnóstico.
+
+H1: La concentración de Creatinina difiere en función del diagnóstico.
+
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results_creatinina = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(creatinine)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(creatinine)$p.value < 0.05, "< 0.05", round(shapiro.test(creatinine)$p.value, 3))
+  )
+kable(shapiro_results_creatinina, align = c("l", "c", "c"))
+```
+
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+
+```{r echo=FALSE}
+kruskal_result_creatinina = kruskal.test(creatinine ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result_creatinina$statistic,
+  ifelse(kruskal_result_creatinina$p.value < 0.05, "< 0.05", round(kruskal_result_creatinina$p.value, 3))
+))
+```
+
+Con estos resultados no podemos rechazar la hipótesis nula concluyendo que no existen diferencias significativas en la concentración de Creatinina en orina en función del diagnóstico.Es por esto que este no sería un biomarcador adecuado para predecir patologías en el pancreas.
+
+#### LYVE1
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_LYVE1 = describeBy(data$LYVE1, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_LYVE1[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+
+H0: La concentración de LYVE1 es igual independientemente del diagnóstico.
+
+H1: La concentración de LYVE1 difiere en función del diagnóstico.
+
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results_LYVE1 = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(LYVE1)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(LYVE1)$p.value < 0.05, "< 0.05", round(shapiro.test(LYVE1)$p.value, 3))
+  )
+kable(shapiro_results_LYVE1, align = c("l", "c", "c"))
+```
+
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+
+```{r echo=FALSE}
+kruskal_result_LYVE1 = kruskal.test(LYVE1 ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result_LYVE1$statistic,
+  ifelse(kruskal_result_LYVE1$p.value < 0.05, "< 0.05", round(kruskal_result_LYVE1$p.value, 3))
+))
+```
+
+Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de LYVE1 en orina en función del diagnóstico. 
+Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
+
+#### REG1A
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_REG1A = describeBy(data$REG1A, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_REG1A[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+
+H0: La concentración de REG1A es igual independientemente del diagnóstico.
+
+H1: La concentración de REG1A difiere en función del diagnóstico.
+
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results_REG1A = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(REG1A)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(REG1A)$p.value < 0.05, "< 0.05", round(shapiro.test(REG1A)$p.value, 3))
+  )
+kable(shapiro_results_REG1A, align = c("l", "c", "c"))
+```
+
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+
+```{r echo=FALSE}
+kruskal_result_REG1A = kruskal.test(REG1A ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result_REG1A$statistic,
+  ifelse(kruskal_result_REG1A$p.value < 0.05, "< 0.05", round(kruskal_result_REG1A$p.value, 3))
+))
+```
+
+Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de REG1A en orina en función del diagnóstico. 
+Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
+
+#### REG1B
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_REG1B = describeBy(data$REG1B, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_REG1B[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+
+H0: La concentración de REG1B es igual independientemente del diagnóstico.
+
+H1: La concentración de REG1B difiere en función del diagnóstico.
+
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results_REG1B = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(REG1B)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(REG1B)$p.value < 0.05, "< 0.05", round(shapiro.test(REG1B)$p.value, 3))
+  )
+kable(shapiro_results_REG1B, align = c("l", "c", "c"))
+```
+
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+
+```{r echo=FALSE}
+kruskal_result_REG1B = kruskal.test(REG1B ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result_REG1B$statistic,
+  ifelse(kruskal_result_REG1B$p.value < 0.05, "< 0.05", round(kruskal_result_REG1B$p.value, 3))
+))
+```
+
+Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de REG1B en orina en función del diagnóstico. 
+Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
+
+#### TFF1
+##### Estadísticos descriptivos por diagnóstico  
+```{r echo=FALSE}
+desc_stats_TFF1 = describeBy(data$TFF1, group = data$diagnosis, mat = TRUE, digits = 2)
+kable(desc_stats_TFF1[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
+      caption = "",
+      format = "pipe")
+```
+
+H0: La concentración de TFF1 es igual independientemente del diagnóstico.
+
+H1: La concentración de TFF1 difiere en función del diagnóstico.    
+  
+##### Pruebas de normalidad  
+
+```{r echo=FALSE}
+shapiro_results = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(TFF1)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(TFF1)$p.value < 0.05, "< 0.05", round(shapiro.test(TFF1)$p.value, 3))
+  )
+kable(shapiro_results, align = c("l", "c", "c"))
+```
+
+Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+  
+##### Prueba de diferencias entre grupos  
+
+```{r echo=FALSE}
+kruskal_result <- kruskal.test(TFF1 ~ diagnosis, data = data)
+cat(sprintf(
+  " Estadístico H: %.2f\n Valor p: %s\n",
+  kruskal_result$statistic,
+  ifelse(kruskal_result$p.value < 0.001, "< 0.001", round(kruskal_result$p.value, 3))
+))
+```
+
+Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de TFF1 en orina en función del diagnóstico. 
+Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
+
+### Conclusiones
+Nos encontramos ante un dataset de gran interés médico relacionado con enfermedades pancreáticas.
+Este dataset presenta una representación muestral adecuada y homogenea siendo un buen set de datos para sacar conclusiones al respecto.
+A partir de estos estudios podemos concluir que:
+
+ - La incidencia de cáncer es mayor en los grupos de edad 61-70 y 71-80 años.
+ - La incidencia de enfermedades benignas es mayor en los grupos de 31 - 40 y 71-80 años.
+ - La enfermedad benigna más común es la pancreatitis, la cual puede presentarse en diversas formas.
+ - En los casos de cáncer, lo más común es encontrar pacientes en estado IIB y III.
+ - Los biomarcadores Plasma C19.9, LYVE1, TFF1, REG1A y REG1B puede ser buenos predictivos para casos de patologías de páncreas.
+ - La creatinina no es un buen biomarcador para predecir patologías en el páncreas.
+
+  
+### Estudio predictivo
+
+Una vez conocido cuales de los bioindicadores muestreado pueden ser predictores de patologías pancreatica, se va a desarrollar un modelo de clasificación para futuros datos médicos.
+
+```{r echo=FALSE}
+data$diagnosis = as.factor(data$diagnosis)
+data = data %>%
+  mutate(across(c(plasma_CA19_9, LYVE1, TFF1, REG1A, REG1B),
+                ~ ifelse(is.na(.), 0, .)))
+```
+
+```{r echo=FALSE}
+set.seed(1508)
+train_index = createDataPartition(data$diagnosis, p = 0.9, list = FALSE)
+train_data = data[train_index, ]
+test_data = data[-train_index, ]
+```
+
+
+```{r echo=FALSE}
+modelo = randomForest(diagnosis ~ plasma_CA19_9 + LYVE1 + REG1A + REG1B + TFF1, 
+                      data = train_data,
+                      importance = TRUE,
+                      ntree = 500
+                      )
+```
+
+```{r echo=FALSE}
+pred = predict(modelo, newdata = test_data)
+
+matriz = confusionMatrix(pred, test_data$diagnosis)
+
+kable(as.table(matriz$table), caption = "Matriz de Confusión") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+data.frame(Accuracy = round(matriz$overall["Accuracy"], 3)) %>%
+  kable(caption = "Accuracy del modelo") %>%
+  kable_styling()
+
+
+```
+
+Con esto hemos creado un modelo predictivo con una eficacia del 73%, observando la matriz de confusión podemos observar que aunque en los casos de cancer o patologías no existe una precisión del 100%, la clasificación de estos casos como control es prácticamente nula. 
+Este modelo podría servir para predecir si existe alguna condición médica en pancreas, una vez conocido este dato sería necesario realizar una segunda tanda de pruebas para conocer si se trata de cáncer u otra patología y derivar así al paciente al tratamiento adecuado.
+
+
