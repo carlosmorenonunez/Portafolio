@@ -2,14 +2,13 @@
 title: "Carlos Moreno Nuñez"
 author: "Data Analyst"
 date: "2025-04-25"
-output: html_document
+output: 
+  html_document:
+    css: estilos.css
 ---
-
 ## Biomarcadores urinarios para la detección de cáncer de páncreas{.tabset} 
 ### Descripción
-
 ```{r include=FALSE}
-# Cargamos las librerias
 library(ggplot2)
 library(data.table)
 library(dplyr)
@@ -25,7 +24,6 @@ library(paletteer)
 ```
 
 ```{r include=FALSE}
-# Cargamos los datos
 data = as.data.table(read.csv("Debernardi et al 2020 data.csv"))
 data[, diagnosis := fifelse(diagnosis == 1, "Control",
                        fifelse(diagnosis == 2, "Benign sample",
@@ -34,33 +32,33 @@ data[, diagnosis := fifelse(diagnosis == 1, "Control",
 
 El cáncer de páncreas es un tipo de cáncer extremadamente mortal. Una vez diagnosticado, la tasa de supervivencia a cinco años es inferior al 10%. Sin embargo, si el cáncer de páncreas se detecta a tiempo, las probabilidades de supervivencia son mucho mejores. Desafortunadamente, muchos casos de cáncer de páncreas no presentan síntomas hasta que el cáncer se ha diseminado por todo el cuerpo. Una prueba diagnóstica para identificar a las personas con cáncer de páncreas podría ser enormemente útil.
 
-En un artículo del equipo de Silvana Debernardiun buscó desarrollar una prueba diagnóstica precisa para el tipo más común de cáncer de páncreas, llamado adenocarcinoma ductal pancreático o PDAC. Reunieron una serie de biomarcadores a partir de la orina de tres grupos de pacientes.
+En un artículo del equipo de Silvana Debernardiun (Jenkinson, C., Earl, J., Ghaneh, P., Halloran, C., Carrato, A., Greenhalf, W., Neoptolemos, J., & Costello, E. (2020). Biomarkers for early detection of pancreatic cancer in urine: A multi-centre study. PLOS Medicine, 17(9), e1003489. https://doi.org/10.1371/journal.pmed.1003489) buscó desarrollar una prueba diagnóstica precisa para el tipo más común de cáncer de páncreas, llamado adenocarcinoma ductal pancreático o PDAC. Reunieron una serie de biomarcadores a partir de la orina de tres grupos de pacientes.
 
 En el conjunto de datos encontramos las siguientes variables:
 
-- sample_id
-- patient_cohort: 
+- sample_id: Id asociado a cada muestra
+- patient_cohort: Fecha de toma de muestras
     - Cohor1: Muestras utilizadas en otros proyectos
     - Cohort2: Muestras nuevas
-- sample_origin: 
+- sample_origin: Origen de la muestra
     - BPTB: Banco de Tejidos de Páncreas de Barts 
     - ESP: Centro Nacional de Investigaciones Oncológicas
     - LIV: Universidad de Liverpool
     - UCL: University College London
-- age
-- sex
-- diagnosis: 
+- age: Edad del paciente de estudio
+- sex: Género del paciente de estudio
+- diagnosis: Diagnóstico del paciente
     - 1: Control
     - 2: Enfermedades benignas de páncreas
     - 3: Cáncer de páncreas
-- stage
-- benign_sample_diagnosis
-- plasma_CA19_9
-- creatinine
-- LYVE1
-- REG1B
-- TFF1
-- REG1A
+- stage: En caso de pacientes con cáncer, etapa del cáncer
+- benign_sample_diagnosis: En caso de paciente con problema benigno, enfermedad que presenta
+- plasma_CA19_9: Proteína que se encuentra en la superficie de algunas células cancerosas
+- creatinine: Producto de desecho producido por la descomposición de la creatina
+- LYVE1 (Lymphatic Vessel Endothelial Hyaluronan Receptor 1). Proteína que se encuentra en las células que recubren los vasos linfáticos.
+- REG1B (Regenerating Family Member 1 Beta). Proteína que pertenece a la familia de proteínas regeneradoras, implicadas en la reparación de tejidos y en la inflamación.
+- TFF1 (Trefoil Factor 1). Proteína que se encuentra en las mucosas del tracto digestivo, involucrada en la protección y reparación de las membranas mucosas.
+- REG1A (Regenerating Family Member 1 Alpha). Proteína que pertenece a la familia de proteínas regeneradoras. Se encuentra principalmente en el páncreas.
 
 ### Objetivo
 En este proyecto se realiza un análisis de los datos que relacionan biomarcadores en la orina con el cancer de páncreas. Para ello se realizarán los siguientes estudios:
@@ -93,7 +91,6 @@ En esta sección vamos a hacer una rápida visualización de características b�
 
 En primer lugar, podemos diferenciar dos tipos de muestras, aquellas que ya han sido utilizadas previamente en otros estudios y muestras tomadas especificamente para el estudio.
 ```{r echo=FALSE}
-# Representación muestras~origen
 cohort_recuento = data[,(colN = .N), by = patient_cohort]
 
 ggplot(cohort_recuento, aes(x = patient_cohort, y = V1)) +
@@ -163,7 +160,7 @@ ggplot(genero_recuento, aes(x = sex, y = colN)) +
 
 Podemos afirmar que existe homogeneidad en función del género, siendo por tanto un grupo representativo en este aspecto.
 Quedando comprobado que estamos tratando con un grupo representativo, vamos a estudiar la distribución de diagnósticos dentro del grupo.
-```{r echo=FALSE}
+```{r echo=FALSE }
 diagnostico_recuento = data[,.(colN = .N), by = diagnosis]
 
 ggplot(diagnostico_recuento, aes(x = diagnosis, y = colN)) +
@@ -175,7 +172,7 @@ ggplot(diagnostico_recuento, aes(x = diagnosis, y = colN)) +
 
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 ggplot(data, aes(x = diagnosis, fill = edadgrupo)) +
   geom_bar(position = "dodge") + 
   labs(title = "Clasificación de los participantes por el diagnóstico y edad",
@@ -185,7 +182,7 @@ ggplot(data, aes(x = diagnosis, fill = edadgrupo)) +
   
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 ggplot(data, aes(x = diagnosis, fill = sex)) +
   geom_bar(position = "dodge") + 
   labs(title = "Clasificación de los participantes por el diagnóstico y género",
@@ -201,7 +198,7 @@ Con respecto a la distribución en comparación con el control, podemos observar
 Por otro lado los casos de enfermedades benignas son más abundantes en el grupo de 31-40 años.
 
 Una vez conocidos los recuentos de diagnósticos, procedemos a estudiar los casos enfermedades benignas y cáncer de colon.
-```{r echo=FALSE}
+```{r echo=FALSE }
 pancreatitis_recuento = data[,.(colN = .N), by = benign_sample_diagnosis]
 
 pancreatitis_recuento = pancreatitis_recuento[benign_sample_diagnosis != ""]
@@ -224,7 +221,7 @@ ggplot(pancreatitis_recuento, aes(x = benign_sample_diagnosis, y = colN)) +
   theme(plot.title = element_text(hjust = 0.5,), axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 cancer_recuento = data[,.(colN = .N), by = stage]
 cancer_recuento = cancer_recuento[stage != ""]
 
@@ -252,7 +249,7 @@ En relación al cáncer de color, en el presente estudio se destacan como biomar
 - REG1A
 A continuación se realizará un análisis de las concentraciones de estos biomarcadores en orina en función del estado del sujeto para comprobar si existen diferencias significativas entre los diferentes grupos.
 
-```{r echo=FALSE, warning=FALSE}
+```{r echo=FALSE, warning=FALSE, fig.width=17.5, fig.height=10}
 q3_plasma = quantile(data$plasma_CA19_9, 0.75, na.rm = TRUE)
 lim_plasma = round(2 * q3_plasma, 0) 
 plasma = ggplot(data, aes(x = diagnosis, y = plasma_CA19_9, fill = diagnosis)) + 
@@ -338,236 +335,355 @@ plasma + creatinine + LYVE1 +
 
 ```
 
+<br>
+
 #### Plasma CA19_9
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
 desc_stats_plasma = describeBy(data$plasma_CA19_9, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_plasma[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+desc_stats_plasma %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 1. Estadísticos descriptivos de CA19_9 por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
 ```
-H0: La concentración de PlasmaCA19_9 es igual independientemente del diagnóstico.
 
-H1: La concentración de PlasmaCA19_9 difiere en función del diagnóstico.
+**Pruebas de normalidad**  
 
-##### Pruebas de normalidad  
-
-```{r echo=FALSE}
+```{r echo=FALSE }
 shapiro_results_plasma = data %>%
   group_by(diagnosis) %>%
   summarise(
     `Estadístico W` = round(shapiro.test(plasma_CA19_9)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(plasma_CA19_9)$p.value < 0.05, "< 0.05", round(shapiro.test(plasma_CA19_9)$p.value, 3))
+    `Valor p` = ifelse(shapiro.test(plasma_CA19_9)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(plasma_CA19_9)$p.value, 3))
   )
-kable(shapiro_results_plasma, align = c("l", "c", "c"))
-```
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
 
-```{r echo=FALSE}
+shapiro_results_plasma %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 2. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3, 
+              background = ifelse(shapiro_results_plasma$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_plasma$`Valor p` < 0.05, TRUE, FALSE))
+```
+
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
+
+**Prueba de Kruskal-Wallis**
+
+H0: La concentración de PlasmaCA19_9 es igual independientemente del diagnóstico.
+
+H1: La concentración de PlasmaCA19_9 difiere en función del diagnóstico.
+
+
+```{r echo=FALSE }
 kruskal_result_plasma = kruskal.test(plasma_CA19_9 ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result_plasma$statistic,
-  ifelse(kruskal_result_plasma$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))
-))
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_plasma$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_plasma$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de Plasma CA19.9 en orina en función del diagnóstico. 
 Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
 
+<br>
+
 #### Creatinina
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
 desc_stats_creatinina = describeBy(data$creatinine, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_creatinina[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+desc_stats_creatinina %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 3. Estadísticos descriptivos de Creatinina por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
+
 ```
+
+**Pruebas de normalidad** 
+```{r echo=FALSE }
+shapiro_results_creatinine = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(creatinine)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(creatinine)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(creatinine)$p.value, 3))
+  )
+shapiro_results_creatinine %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 4. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3,  
+              background = ifelse(shapiro_results_creatinine$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_creatinine$`Valor p` < 0.05, TRUE, FALSE))
+
+
+```
+
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
+
+**Prueba de Kruskal-Wallis**
 
 H0: La concentración de Creatinina es igual independientemente del diagnóstico.
 
 H1: La concentración de Creatinina difiere en función del diagnóstico.
 
-##### Pruebas de normalidad  
-
-```{r echo=FALSE}
-shapiro_results_creatinina = data %>%
-  group_by(diagnosis) %>%
-  summarise(
-    `Estadístico W` = round(shapiro.test(creatinine)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(creatinine)$p.value < 0.05, "< 0.05", round(shapiro.test(creatinine)$p.value, 3))
-  )
-kable(shapiro_results_creatinina, align = c("l", "c", "c"))
-```
-
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
-
-```{r echo=FALSE}
+```{r echo=FALSE }
 kruskal_result_creatinina = kruskal.test(creatinine ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result_creatinina$statistic,
-  ifelse(kruskal_result_creatinina$p.value < 0.05, "< 0.05", round(kruskal_result_creatinina$p.value, 3))
-))
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_creatinina$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_creatinina$p.value < 0.05, "< 0.05", round(kruskal_result_creatinina$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados no podemos rechazar la hipótesis nula concluyendo que no existen diferencias significativas en la concentración de Creatinina en orina en función del diagnóstico.Es por esto que este no sería un biomarcador adecuado para predecir patologías en el pancreas.
 
+<br>
+
 #### LYVE1
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
-desc_stats_LYVE1 = describeBy(data$LYVE1, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_LYVE1[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
+desc_stats_LYVE = describeBy(data$LYVE1, group = data$diagnosis, mat = TRUE, digits = 2)
+desc_stats_LYVE %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 5. Estadísticos descriptivos de LYVE1 por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
 ```
 
-H0: La concentración de LYVE1 es igual independientemente del diagnóstico.
+**Pruebas de normalidad**  
 
-H1: La concentración de LYVE1 difiere en función del diagnóstico.
-
-##### Pruebas de normalidad  
-
-```{r echo=FALSE}
-shapiro_results_LYVE1 = data %>%
+```{r echo=FALSE }
+shapiro_results_LYVE = data %>%
   group_by(diagnosis) %>%
   summarise(
     `Estadístico W` = round(shapiro.test(LYVE1)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(LYVE1)$p.value < 0.05, "< 0.05", round(shapiro.test(LYVE1)$p.value, 3))
+    `Valor p` = ifelse(shapiro.test(LYVE1)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(LYVE1)$p.value, 3))
   )
-kable(shapiro_results_LYVE1, align = c("l", "c", "c"))
+
+shapiro_results_LYVE %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 6. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3, 
+              background = ifelse(shapiro_results_plasma$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_plasma$`Valor p` < 0.05, TRUE, FALSE))
 ```
 
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
 
-```{r echo=FALSE}
-kruskal_result_LYVE1 = kruskal.test(LYVE1 ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result_LYVE1$statistic,
-  ifelse(kruskal_result_LYVE1$p.value < 0.05, "< 0.05", round(kruskal_result_LYVE1$p.value, 3))
-))
+**Prueba de Kruskal-Wallis**
+
+H0: La concentración de PlasmaCA19_9 es igual independientemente del diagnóstico.
+
+H1: La concentración de PlasmaCA19_9 difiere en función del diagnóstico.
+
+```{r echo=FALSE }
+kruskal_result_LYVE = kruskal.test(LYVE1 ~ diagnosis, data = data)
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_LYVE$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_LYVE$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de LYVE1 en orina en función del diagnóstico. 
 Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
 
+<br>
+
 #### REG1A
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
 desc_stats_REG1A = describeBy(data$REG1A, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_REG1A[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+desc_stats_REG1A %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 7. Estadísticos descriptivos de REG1A por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
 ```
+
+**Pruebas de normalidad**  
+
+```{r echo=FALSE }
+shapiro_results_REG1A = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(REG1A)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(REG1A)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(REG1A)$p.value, 3))
+  )
+
+shapiro_results_REG1A %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 8. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3, 
+              background = ifelse(shapiro_results_plasma$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_plasma$`Valor p` < 0.05, TRUE, FALSE))
+```
+
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
+
+**Prueba de Kruskal-Wallis**
 
 H0: La concentración de REG1A es igual independientemente del diagnóstico.
 
 H1: La concentración de REG1A difiere en función del diagnóstico.
 
-##### Pruebas de normalidad  
 
-```{r echo=FALSE}
-shapiro_results_REG1A = data %>%
-  group_by(diagnosis) %>%
-  summarise(
-    `Estadístico W` = round(shapiro.test(REG1A)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(REG1A)$p.value < 0.05, "< 0.05", round(shapiro.test(REG1A)$p.value, 3))
-  )
-kable(shapiro_results_REG1A, align = c("l", "c", "c"))
-```
-
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
-
-```{r echo=FALSE}
+```{r echo=FALSE }
 kruskal_result_REG1A = kruskal.test(REG1A ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result_REG1A$statistic,
-  ifelse(kruskal_result_REG1A$p.value < 0.05, "< 0.05", round(kruskal_result_REG1A$p.value, 3))
-))
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_REG1A$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_REG1A$p.value < 0.05, "< 0.05", round(kruskal_result_REG1A$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de REG1A en orina en función del diagnóstico. 
 Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
 
+<br>
+
 #### REG1B
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
 desc_stats_REG1B = describeBy(data$REG1B, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_REG1B[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+desc_stats_REG1B %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 9. Estadísticos descriptivos de REG1B por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
 ```
+
+**Pruebas de normalidad**  
+
+```{r echo=FALSE }
+shapiro_results_REG1B = data %>%
+  group_by(diagnosis) %>%
+  summarise(
+    `Estadístico W` = round(shapiro.test(REG1B)$statistic, 3),
+    `Valor p` = ifelse(shapiro.test(REG1B)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(REG1B)$p.value, 3))
+  )
+
+shapiro_results_REG1B %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 10. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3, 
+              background = ifelse(shapiro_results_plasma$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_plasma$`Valor p` < 0.05, TRUE, FALSE))
+```
+
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
+
+**Prueba de Kruskal-Wallis**
 
 H0: La concentración de REG1B es igual independientemente del diagnóstico.
 
 H1: La concentración de REG1B difiere en función del diagnóstico.
 
-##### Pruebas de normalidad  
 
-```{r echo=FALSE}
-shapiro_results_REG1B = data %>%
-  group_by(diagnosis) %>%
-  summarise(
-    `Estadístico W` = round(shapiro.test(REG1B)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(REG1B)$p.value < 0.05, "< 0.05", round(shapiro.test(REG1B)$p.value, 3))
-  )
-kable(shapiro_results_REG1B, align = c("l", "c", "c"))
-```
-
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
-
-```{r echo=FALSE}
+```{r echo=FALSE }
 kruskal_result_REG1B = kruskal.test(REG1B ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result_REG1B$statistic,
-  ifelse(kruskal_result_REG1B$p.value < 0.05, "< 0.05", round(kruskal_result_REG1B$p.value, 3))
-))
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_REG1B$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_REG1B$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de REG1B en orina en función del diagnóstico. 
 Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
 
+<br>
+
 #### TFF1
-##### Estadísticos descriptivos por diagnóstico  
-```{r echo=FALSE}
+**Estadísticos descriptivos por diagnóstico**
+```{r echo=FALSE }
 desc_stats_TFF1 = describeBy(data$TFF1, group = data$diagnosis, mat = TRUE, digits = 2)
-kable(desc_stats_TFF1[, c("group1", "n", "mean", "sd", "median", "min", "max")], 
-      caption = "",
-      format = "pipe")
+desc_stats_TFF1 %>%
+  select(Group = group1, n, Mean = mean, SD = sd, Median = median, Min = min, Max = max) %>%
+  kable(align = c("l", "r", "r", "r", "r", "r", "r"), 
+        format = "html",
+        caption = "Tabla 11. Estadísticos descriptivos de TFF1 por grupo diagnóstico") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) 
 ```
 
-H0: La concentración de TFF1 es igual independientemente del diagnóstico.
+**Pruebas de normalidad**  
 
-H1: La concentración de TFF1 difiere en función del diagnóstico.    
-  
-##### Pruebas de normalidad  
-
-```{r echo=FALSE}
-shapiro_results = data %>%
+```{r echo=FALSE }
+shapiro_results_TFF1 = data %>%
   group_by(diagnosis) %>%
   summarise(
     `Estadístico W` = round(shapiro.test(TFF1)$statistic, 3),
-    `Valor p` = ifelse(shapiro.test(TFF1)$p.value < 0.05, "< 0.05", round(shapiro.test(TFF1)$p.value, 3))
+    `Valor p` = ifelse(shapiro.test(TFF1)$p.value < 0.05, "< 0.05", 
+                      round(shapiro.test(TFF1)$p.value, 3))
   )
-kable(shapiro_results, align = c("l", "c", "c"))
+
+shapiro_results_TFF1 %>%
+  kable(align = c("l", "c", "c"),
+        format = "html",
+        caption = "Tabla 12. Pruebas de normalidad por grupo") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE) %>%
+  column_spec(column = 3, 
+              background = ifelse(shapiro_results_plasma$`Valor p` < 0.05, "#FFDDDD", "white"),
+              bold = ifelse(shapiro_results_TFF1$`Valor p` < 0.05, TRUE, FALSE))
 ```
 
-Debido a la ausencia de normalidad de los datos, lo más indicado es elaborar un test Krustal-Wallis.
-  
-##### Prueba de diferencias entre grupos  
+**Interpretación**: Todos los grupos mostraron distribuciones no normales (p < 0.05), lo que sugiere el uso de pruebas no paramétricas.
 
-```{r echo=FALSE}
-kruskal_result <- kruskal.test(TFF1 ~ diagnosis, data = data)
-cat(sprintf(
-  " Estadístico H: %.2f\n Valor p: %s\n",
-  kruskal_result$statistic,
-  ifelse(kruskal_result$p.value < 0.001, "< 0.001", round(kruskal_result$p.value, 3))
-))
+**Prueba de Kruskal-Wallis**
+
+H0: La concentración de TFF1 es igual independientemente del diagnóstico.
+
+H1: La concentración de TFF1 difiere en función del diagnóstico.
+
+
+```{r echo=FALSE }
+kruskal_result_TFF1 = kruskal.test(TFF1 ~ diagnosis, data = data)
 ```
 
+**Resultados**:
+
+- Estadístico H = `r round(kruskal_result_TFF1$statistic, 2)`
+
+- Valor p = `r ifelse(kruskal_result_TFF1$p.value < 0.05, "< 0.05", round(kruskal_result_plasma$p.value, 3))`
+
+**Conclusiones**
 Con estos resultados podemos rechazar la hipótesis nula concluyendo que existen diferencias significativas en la concentración de TFF1 en orina en función del diagnóstico. 
 Con esta conclusión junto con la representación gráfica se puede establecer que existe una concrentración más elevada del bioindicador en los sujetos con cáncer, pudiendo por tanto este ser utilizado en modelos predictivos.
 
@@ -588,14 +704,14 @@ A partir de estos estudios podemos concluir que:
 
 Una vez conocido cuales de los bioindicadores muestreado pueden ser predictores de patologías pancreatica, se va a desarrollar un modelo de clasificación para futuros datos médicos.
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 data$diagnosis = as.factor(data$diagnosis)
 data = data %>%
   mutate(across(c(plasma_CA19_9, LYVE1, TFF1, REG1A, REG1B),
                 ~ ifelse(is.na(.), 0, .)))
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 set.seed(1508)
 train_index = createDataPartition(data$diagnosis, p = 0.9, list = FALSE)
 train_data = data[train_index, ]
@@ -603,7 +719,7 @@ test_data = data[-train_index, ]
 ```
 
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 modelo = randomForest(diagnosis ~ plasma_CA19_9 + LYVE1 + REG1A + REG1B + TFF1, 
                       data = train_data,
                       importance = TRUE,
@@ -611,7 +727,7 @@ modelo = randomForest(diagnosis ~ plasma_CA19_9 + LYVE1 + REG1A + REG1B + TFF1,
                       )
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE }
 pred = predict(modelo, newdata = test_data)
 
 matriz = confusionMatrix(pred, test_data$diagnosis)
